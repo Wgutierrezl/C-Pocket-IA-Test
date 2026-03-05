@@ -1,0 +1,1 @@
+export const TOOL_SERVICE=Symbol('TOOL_SERVICE');
