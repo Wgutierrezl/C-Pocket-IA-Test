@@ -1,98 +1,252 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🤖 Pocki Bot – Asistente Virtual de WhatsApp
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Bot de WhatsApp con inteligencia artificial desarrollado como prueba técnica para **C-Pocket**. Recibe mensajes de texto, analiza la intención del usuario con IA, ejecuta herramientas personalizadas (tools) y responde directamente por WhatsApp.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 📋 Tabla de Contenidos
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- [Características](#-características)
+- [Arquitectura](#-arquitectura)
+- [Stack Tecnológico y Decisiones Técnicas](#-stack-tecnológico-y-decisiones-técnicas)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Variables de Entorno](#-variables-de-entorno)
+- [Instalación y Ejecución](#-instalación-y-ejecución)
+- [Documentación de Endpoints](#-documentación-de-endpoints)
+- [Tool Implementada – TRM (Precio del Dólar)](#-tool-implementada--trm-precio-del-dólar)
+- [Manejo de Errores](#-manejo-de-errores)
 
-## Project setup
+---
 
-```bash
-$ npm install
+## ✨ Características
+
+- Recepción de mensajes desde WhatsApp vía Meta Cloud API
+- Análisis de intención del usuario con IA (Groq + LLaMA)
+- Ejecución de herramientas (tools) según la intención detectada
+- Consulta en tiempo real del precio del dólar (TRM) mediante web scraping
+- Persistencia de mensajes y respuestas en PostgreSQL (Supabase)
+- Documentación interactiva de endpoints con Swagger
+- Dockerizado para despliegue sin dependencias locales
+
+---
+
+## 🏗 Arquitectura
+
+El proyecto sigue una **arquitectura modular basada en servicios y repositorios**, aplicando principios SOLID y separación de responsabilidades. Cada módulo es independiente, lo que facilita el mantenimiento y la escalabilidad.
+
+### Flujo general
+
+```
+WhatsApp (usuario)
+        │
+        ▼
+[POST /webhook]  ← Meta Cloud API
+        │
+        ▼
+  WhatsappModule
+  (valida y parsea el mensaje entrante)
+        │
+        ▼
+   OpenAIModule
+   (analiza intención con Groq/LLaMA)
+        │
+     ¿Tool?
+    /      \
+  Sí        No
+  │          │
+  ▼          ▼
+ToolsModule  Respuesta directa
+(ejecuta     de la IA
+ la tool)
+   │
+   ▼
+MessagesModule
+(persiste en DB y envía respuesta a WhatsApp)
 ```
 
-## Compile and run the project
+### Principios aplicados
 
-```bash
-# development
-$ npm run start
+- **Single Responsibility**: cada servicio tiene una única responsabilidad (enviar mensajes, consultar IA, ejecutar tools, persistir datos).
+- **Open/Closed**: agregar una nueva tool no requiere modificar el código existente, solo registrar la nueva herramienta en el módulo de tools.
+- **Dependency Injection**: NestJS gestiona las dependencias entre módulos vía su sistema de DI, evitando acoplamientos directos.
+- **Repository Pattern**: en el módulo `messages`, el acceso a base de datos está abstraído en un repositorio, desacoplando la lógica de negocio de la capa de persistencia.
 
-# watch mode
-$ npm run start:dev
+---
 
-# production mode
-$ npm run start:prod
+## 🛠 Stack Tecnológico y Decisiones Técnicas
+
+| Tecnología | Rol | Por qué |
+|---|---|---|
+| **NestJS** | Framework backend | Tipado fuerte con TypeScript, arquitectura modular nativa, inyección de dependencias, decoradores para Swagger. Viene de Node.js puro pero NestJS ofrece estructura sólida para proyectos escalables. |
+| **Groq (API de OpenAI compatible)** | Motor de IA | Mucho más accesible que OpenAI puro: cuota gratuita generosa, latencia muy baja con LLaMA, y compatible con el SDK de OpenAI, lo que facilita la integración sin cambiar código. |
+| **Meta WhatsApp Cloud API** | Canal de mensajería | API oficial de Meta, estable y con soporte para webhooks, envío de mensajes y validación de tokens. |
+| **PostgreSQL en Supabase** | Base de datos | Al alojar la DB en Supabase, el proyecto no depende de entornos locales. Funciona igual en local y en producción, sin configuración adicional. |
+| **Docker / Docker Compose** | Containerización | Elimina conflictos de versiones de Node.js y dependencias. Un solo comando levanta el proyecto completo sin instalar nada. |
+| **Swagger (OpenAPI)** | Documentación | Integrado directamente en NestJS con `@nestjs/swagger`. Más cómodo que Postman para documentar y probar endpoints en desarrollo. |
+
+---
+
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── messages/                     # Persistencia de mensajes
+│   ├── entities/                 # Entidades de TypeORM / modelos de DB
+│   ├── interfaces/               # Contratos e interfaces del módulo
+│   ├── messages.controller.ts
+│   ├── messages.service.ts       # Lógica de negocio
+│   ├── messages.repository.ts    # Acceso a base de datos (Repository Pattern)
+│   └── messages.module.ts
+│
+├── openai/                       # Integración con Groq/IA
+│   ├── interfaces/               # Contratos e interfaces del módulo
+│   ├── openai.service.ts         # Llama a la API de Groq, gestiona el function calling
+│   └── openai.module.ts
+│
+├── tools/                        # Herramientas personalizadas (tools)
+│   ├── interfaces/               # Contratos e interfaces del módulo
+│   ├── tools.service.ts          # Ejecuta la tool correspondiente (TRM, etc.)
+│   └── tools.module.ts
+│
+├── whatsapp/                     # Entrada de mensajes y envío de respuestas
+│   ├── interfaces/               # Contratos e interfaces del módulo
+│   ├── whatsapp.controller.ts    # Endpoints GET (webhook) y POST (mensajes)
+│   ├── whatsapp.service.ts       # Orquesta el flujo completo
+│   └── whatsapp.module.ts
+│
+└── main.ts                       # Bootstrap, configuración de Swagger
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+## 🔑 Variables de Entorno
 
-# e2e tests
-$ npm run test:e2e
+Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
 
-# test coverage
-$ npm run test:cov
+```env
+# Clave de OpenAI (también usada para autenticar contra Groq vía SDK compatible)
+OPENAI_API_KEY=sk-proj-...
+
+# Clave de Groq (modelo LLaMA gratuito)
+GROQ_API_KEY=gsk_...
+
+# ID del número de teléfono de WhatsApp (desde Meta Developers)
+WHATSAPP_PHONE_NUMBER_ID=...
+
+# Token de acceso temporal de WhatsApp (Meta Developers → WhatsApp → API Setup)
+WHATSAPP_TOKEN=...
+
+# URL de conexión a PostgreSQL (Supabase o local)
+DATABASE_URL=postgresql://usuario:password@host:5432/postgres
+
+# Token secreto para verificar el webhook de Meta
+WEBHOOK_VERIFY_TOKEN=pocki_secret_2026
 ```
 
-## Deployment
+> Puedes usar el archivo `.env.example` incluido en el repositorio como plantilla.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+---
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## 🚀 Instalación y Ejecución
+
+### Opción 1 – Docker (recomendado)
+
+Requiere tener [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado.
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# 1. Clona el repositorio
+git clone -b main https://github.com/Wgutierrezl/C-Pocket-IA-Test.git .
+
+# 2. Crea el archivo .env con las variables de entorno
+
+# 3. Levanta el proyecto
+docker-compose up --build
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+El API estará disponible en `http://localhost:3000`
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+### Opción 2 – Manual con Node.js
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Requiere Node.js instalado (v18+ recomendado).
 
-## Support
+```bash
+# 1. Clona el repositorio
+git clone -b main https://github.com/Wgutierrezl/C-Pocket-IA-Test.git .
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+# 2. Instala dependencias
+npm install
 
-## Stay in touch
+# 3. Crea el archivo .env con las variables de entorno
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+# 4. Levanta el servidor en modo desarrollo
+npm run start:dev
+```
 
-## License
+El API estará disponible en `http://localhost:3000`
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+---
+
+## 📖 Documentación de Endpoints
+
+La documentación interactiva está disponible en:
+
+```
+http://localhost:3000/docs
+```
+
+### Endpoints disponibles
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/webhook` | Verificación del webhook con Meta (handshake inicial) |
+| `POST` | `/webhook` | Recepción de mensajes entrantes desde WhatsApp |
+| `GET` | `/health` | Health check – verifica que el API esté activo |
+
+---
+
+## 🔧 Tool Implementada – TRM (Precio del Dólar)
+
+La tool de TRM realiza **web scraping en tiempo real** para obtener el precio actual del dólar (Tasa Representativa del Mercado) en Colombia.
+
+### ¿Cómo funciona?
+
+1. El usuario envía un mensaje como: *"¿Cuánto está el dólar hoy?"* o *"¿Cuál es el TRM actual?"*
+2. Groq analiza la intención y detecta que debe ejecutar la tool `get_trm`
+3. El `ToolsService` ejecuta el scraping al sitio de referencia
+4. El resultado se procesa y se devuelve al usuario como mensaje de WhatsApp
+
+### Ejemplo de respuesta
+
+```
+💵 El precio del dólar hoy es: $4.185,50 COP
+Fuente: Banco de la República – actualizado hoy
+```
+
+---
+
+## ⚠️ Manejo de Errores
+
+### Token de WhatsApp expirado (Error 401)
+
+El token de WhatsApp en modo sandbox **expira periódicamente**. Si ves un error `401` de Meta:
+
+1. Ve a [Meta Developers](https://developers.facebook.com/) → tu app → **WhatsApp → API Setup**
+2. Genera un nuevo **Temporary access token**
+3. Actualiza `WHATSAPP_TOKEN` en tu `.env`
+4. Reinicia el contenedor: `docker-compose restart`
+
+### ngrok y URLs dinámicas
+
+Este proyecto se expone localmente con **ngrok**. Ten en cuenta que:
+- La URL de ngrok **cambia cada vez** que reinicias el túnel
+- Debes actualizar la URL del webhook en Meta Developers cada vez que esto ocurra
+- Para producción real se recomienda desplegar en un servidor con URL fija (Railway, Render, AWS, etc.)
+
+---
+
+## 👨‍💻 Autor
+
+**Walter Ernesto Gutiérrez Londoño**  
+Prueba técnica – C-Pocket / Pocki Asistente Virtual
