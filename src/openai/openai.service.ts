@@ -30,13 +30,14 @@ export class OpenaiService implements IOpenaiService{
     private readonly toolsService: IToolService,
   ) {
     this.client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: process.env.GROQ_API_KEY,
+      baseURL:'https://api.groq.com/openai/v1'
     });
   }
 
   async processMessage(userMessage: string): Promise<OpenAIResponse> {
     const firstResponse = await this.client.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'llama-3.3-70b-versatile',
       messages: [
         {
           role: 'system',
@@ -70,7 +71,7 @@ export class OpenaiService implements IOpenaiService{
       }
 
       const secondResponse = await this.client.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',

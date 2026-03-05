@@ -55,7 +55,7 @@ export class WhatsappController {
                                     value: {
                                         messages: [
                                             {
-                                                from: '573001234567',
+                                                from: '573215762469',
                                                 type: 'text',
                                                 text: { body: '¿Cuál es la TRM hoy?' },
                                             },

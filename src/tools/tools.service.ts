@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import axios from 'axios';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio'; 
 import { IToolService } from './interfaces/tools.service.interface';
 
 @Injectable()
