@@ -23,6 +23,48 @@ export class OpenaiService implements IOpenaiService{
         },
       }
     },
+
+    //--- TOOL 2
+    {
+      type:'function',
+      function:{
+        name:'getTechNews',
+        description:
+        'Busca noticias recientes de tecnología por palabra clave. Úsala cuando el usuario pregunte por noticias, últimas novedades tecnológicas, o quiera saber qué hay de nuevo sobre un tema tech.',
+        parameters:{
+          type:'object',
+          properties:{
+            keyword:{
+              type:'string',
+              description:'Palabra clave o tema sobre el que buscar noticias. Ej: "inteligencia artificial", "Apple", "ciberseguridad".',
+            }
+          },
+          required: ['keyword']
+        },
+      },
+    },
+
+
+    // -- TOOL 3
+
+    {
+      type:'function',
+      function:{
+        name:'searchPublicInfo',
+        description:
+        'Busca información pública estructurada sobre un tema, concepto, empresa, persona o lugar. Úsala para preguntas de tipo "¿qué es X?", "cuéntame sobre Y", o cuando necesites datos generales.',
+        parameters:{
+          type:'object',
+          properties:{
+            query:{
+              type:'string',
+              description:'Término o concepto a buscar. Ej: "Bitcoin", "NestJS", "Banco de la República".'
+            }
+          },
+          required:['query'],
+        },
+      },
+    },
   ];
 
   constructor(
@@ -44,7 +86,11 @@ export class OpenaiService implements IOpenaiService{
           content: `Eres Pocki, un asistente virtual amigable de C-Pocket. 
             Ayudas a los usuarios con información financiera y consultas generales.
             Responde siempre en español, de forma clara y concisa.
-            Si el usuario pregunta por el dólar, TRM o tasa de cambio, usa la herramienta getTRM.`,
+            Tienes acceso a estas herramientas:
+            - getTRM: si el usuario pregunta por el dólar, TRM o tasa de cambio.
+            - getTechNews: si el usuario pregunta por noticias o novedades tecnológicas.
+            - searchPublicInfo: si el usuario pregunta qué es algo o quiere información general sobre un tema.
+            Si la pregunta no encaja con ninguna herramienta, responde directamente sin usar ninguna.`,
         },
         { role: 'user', content: userMessage },
       ],
@@ -68,6 +114,14 @@ export class OpenaiService implements IOpenaiService{
       let toolResult = '';
       if (toolName === 'getTRM') {
         toolResult = await this.toolsService.getTRM();
+      }else if (toolName === 'getTechNews') {
+        // El modelo envía los args como JSON string → hay que parsearlos
+        const args = JSON.parse('function' in toolCall && toolCall.function ? toolCall.function.arguments ?? '{}' : '{}');
+        toolResult = await this.toolsService.getTechNews(args.keyword ?? '');
+
+      } else if (toolName === 'searchPublicInfo') {
+        const args = JSON.parse('function' in toolCall && toolCall.function ? toolCall.function.arguments ?? '{}' : '{}');
+        toolResult = await this.toolsService.searchPublicInfo(args.query ?? '');
       }
 
       const secondResponse = await this.client.chat.completions.create({
